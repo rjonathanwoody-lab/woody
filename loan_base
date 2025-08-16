@@ -1,0 +1,28 @@
+DuckDB v1.3.2 (Ossivalis) 0b83e5d2f6
+Enter ".help" for usage hints.
+Connected to a transient in-memory database.
+Use ".open FILENAME" to reopen on a persistent database.
+D COPY (
+┬╖     SELECT
+┬╖         row_number() OVER () AS loan_id,
+┬╖         loan_amnt,
+┬╖         term,
+┬╖         int_rate,
+┬╖         installment,
+┬╖         grade,
+┬╖         sub_grade,
+┬╖         emp_length,
+┬╖         home_ownership,
+┬╖         annual_inc,
+┬╖         verification_status,
+┬╖         issue_d,
+┬╖         purpose,
+┬╖         addr_state,
+┬╖         dti,
+┬╖         loan_status
+┬╖     FROM read_csv_auto('C:\\Users\\woods\\Downloads\\loan.csv\\loan.csv')
+┬╖     WHERE STRPTIME(issue_d, '%b-%Y') >= DATE '2016-01-01'
+┬╖ )
+┬╖ TO 'C:\\Users\\woods\\Downloads\\Loan_base.csv' (HEADER, DELIMITER ',');
+100% ?████████████████████████████████████████████████████████████?
+D
