@@ -1,0 +1,44 @@
+let
+     Source = Loan_base_raw,
+
+    // === Merge Dimension Keys ===
+
+    // Join Dim_Grade on grade + sub_grade
+    MergeGrade = Table.NestedJoin(Source, {"grade", "sub_grade"}, Dim_Grade, {"grade", "sub_grade"}, "GradeTable", JoinKind.LeftOuter),
+    ExpandGrade = Table.ExpandTableColumn(MergeGrade, "GradeTable", {"grade_id"}),
+
+    // Join Dim_Emp
+    MergeEmp = Table.NestedJoin(ExpandGrade, {"emp_length"}, Dim_Emp, {"emp_length"}, "EmpTable", JoinKind.LeftOuter),
+    ExpandEmp = Table.ExpandTableColumn(MergeEmp, "EmpTable", {"emp_length_id"}),
+
+    // Join Dim_Home
+    MergeHome = Table.NestedJoin(ExpandEmp, {"home_ownership"}, Dim_Home, {"home_ownership"}, "HomeTable", JoinKind.LeftOuter),
+    ExpandHome = Table.ExpandTableColumn(MergeHome, "HomeTable", {"home_ownership_id"}),
+
+    // Join Dim_Purpose
+    MergePurpose = Table.NestedJoin(ExpandHome, {"purpose"}, Dim_Purpose, {"purpose"}, "PurposeTable", JoinKind.LeftOuter),
+    ExpandPurpose = Table.ExpandTableColumn(MergePurpose, "PurposeTable", {"purpose_id"}),
+
+    // Join Dim_Verification
+    MergeVerif = Table.NestedJoin(ExpandPurpose, {"verification_status"}, Dim_Verification, {"verification_status"}, "VerifTable", JoinKind.LeftOuter),
+    ExpandVerif = Table.ExpandTableColumn(MergeVerif, "VerifTable", {"verification_status_id"}),
+
+    // Join Dim_Loan_Status
+    MergeLoanStatus = Table.NestedJoin(ExpandVerif, {"loan_status"}, Dim_Loan_Status, {"loan_status"}, "LoanStatusTable", JoinKind.LeftOuter),
+    ExpandLoanStatus = Table.ExpandTableColumn(MergeLoanStatus, "LoanStatusTable", {"loan_status_id"}),
+
+    // Join Dim_State
+    MergeState = Table.NestedJoin(ExpandLoanStatus, {"addr_state"}, Dim_State, {"addr_state"}, "StateTable", JoinKind.LeftOuter),
+    ExpandState = Table.ExpandTableColumn(MergeState, "StateTable", {"state_id"}),
+
+    // Add date_id from issue_d (for joining with Dim_Date[DateKey])
+    AddDateKey = Table.AddColumn(ExpandState, "date_id", each Date.Year([issue_d]) * 10000 + Date.Month([issue_d]) * 100 + Date.Day([issue_d]), Int64.Type),
+
+    // === STEP 5: Remove original descriptive columns now handled by dimensions ===
+    FinalFact = Table.RemoveColumns(AddDateKey, {
+        "grade", "sub_grade", "emp_length", "home_ownership", 
+        "purpose", "verification_status", "loan_status", "addr_state", "issue_d"
+    })
+
+in
+    FinalFact
