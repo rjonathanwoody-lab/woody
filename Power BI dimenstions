@@ -1,0 +1,50 @@
+//Dim_purpose
+let
+    Source = Loan_base_raw,
+    PurposeTable = Table.Distinct(Table.SelectColumns(Source, {"purpose"})),
+    WithID = Table.AddIndexColumn(PurposeTable, "purpose_id", 1, 1, Int64.Type)
+in
+    WithID
+//Dim_Grade
+let
+    Source = Loan_base_raw,
+    GradeTable = Table.Distinct(Table.SelectColumns(Source, {"grade", "sub_grade"})),
+    WithID = Table.AddIndexColumn(GradeTable, "grade_id", 1, 1, Int64.Type)
+in
+    WithID
+
+//Dim_date
+let
+    Source = Loan_base_raw,
+
+    // 2. Get min and max issue_d
+    MinDate = List.Min(Source[issue_d]),
+    MaxDate = List.Max(Source[issue_d]),
+
+    // 3. Generate list of dates between min and max
+    DateList = List.Dates(MinDate, Duration.Days(MaxDate - MinDate) + 1, #duration(1, 0, 0, 0)),
+
+    // 4. Convert list to table
+    DateTable = Table.FromList(DateList, Splitter.SplitByNothing(), {"Date"}),
+
+    // 5. Add calendar attributes
+    AddYear = Table.AddColumn(DateTable, "Year", each Date.Year([Date]), Int64.Type),
+    AddMonth = Table.AddColumn(AddYear, "Month", each Date.Month([Date]), Int64.Type),
+    AddMonthName = Table.AddColumn(AddMonth, "Month Name", each Date.ToText([Date], "MMMM"), type text),
+    AddMonthShort = Table.AddColumn(AddMonthName, "Month Short", each Date.ToText([Date], "MMM"), type text),
+    AddQuarter = Table.AddColumn(AddMonthShort, "Quarter", each "Q" & Text.From(Date.QuarterOfYear([Date])), type text),
+    AddDay = Table.AddColumn(AddQuarter, "Day", each Date.Day([Date]), Int64.Type),
+    AddDayOfWeek = Table.AddColumn(AddDay, "Day of Week", each Date.DayOfWeek([Date]), Int64.Type),
+    AddDayName = Table.AddColumn(AddDayOfWeek, "Day Name", each Date.ToText([Date], "dddd"), type text),
+    AddIsWeekend = Table.AddColumn(AddDayName, "Is Weekend", each Date.DayOfWeek([Date]) >= 5, type logical),
+    AddYearMonth = Table.AddColumn(AddIsWeekend, "Year-Month", each Text.From(Date.Year([Date])) & "-" & Text.PadStart(Text.From(Date.Month([Date])), 2, "0"), type text),
+    AddDateKey = Table.AddColumn(AddYearMonth, "DateKey", each Date.Year([Date]) * 10000 + Date.Month([Date]) * 100 + Date.Day([Date]), Int64.Type),
+
+    // 6. Reorder and clean columns
+    FinalTable = Table.SelectColumns(AddDateKey, {
+        "DateKey", "Date", "Year", "Month", "Month Name", "Month Short", "Quarter",
+        "Day", "Day of Week", "Day Name", "Is Weekend", "Year-Month"
+    }),
+    SortedTable = Table.Sort(FinalTable, {{"Date", Order.Ascending}})
+in
+    SortedTable
